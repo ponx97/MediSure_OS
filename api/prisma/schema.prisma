@@ -37,6 +37,7 @@ model Member {
   memberNo  String   @unique
   fullName  String
   dob       DateTime?
+  email     String?  @unique   // or String (required) if you want
   phone     String?
   address   String?
   status    String   @default("active")
