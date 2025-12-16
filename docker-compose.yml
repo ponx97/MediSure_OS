@@ -1,19 +1,31 @@
+
+version: '3.8'
+
 services:
   app:
     build: .
-    container_name: medisureos_app
     ports:
-      - "5007:80"
-    env_file:
-      - .env
+      - "3000:3000"
     environment:
+      - DATABASE_URL=postgresql://medisure_user:secure_password@db:5432/medisure_db
       - PORT=3000
-      - DATABASE_URL=postgresql://mediapp_user:Faith4tila@mediapp_db:5432/medisure_db
-      # - API_KEY=your_gemini_api_key_here
-    networks:
-      - mediapp_mediapp_net
-    restart: unless-stopped
+      # API_KEY=your_gemini_api_key_here # Uncomment and add key or pass via .env file
+    depends_on:
+      - db
+    restart: always
 
-networks:
-  mediapp_mediapp_net:
-    external: true
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_USER=medisure_user
+      - POSTGRES_PASSWORD=secure_password
+      - POSTGRES_DB=medisure_db
+    ports:
+      - "5432:5432"
+    restart: always
+
+volumes:
+  postgres_data:

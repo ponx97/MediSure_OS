@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
@@ -15,19 +14,49 @@ import Accounting from './pages/Accounting';
 import BillingOperations from './pages/BillingOperations';
 import Login from './pages/Login';
 import { User } from './types';
+import { api } from './services/api';
+import { Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [currentPath, setCurrentPath] = useState('dashboard');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkSession = () => {
+        const storedUser = localStorage.getItem('user');
+        const token = localStorage.getItem('accessToken');
+        
+        if (storedUser && token) {
+            try {
+                setUser(JSON.parse(storedUser));
+            } catch (e) {
+                console.error('Failed to parse user session', e);
+                localStorage.clear();
+            }
+        }
+        setLoading(false);
+    };
+    checkSession();
+  }, []);
 
   const handleLogin = (selectedUser: User) => {
     setUser(selectedUser);
     setCurrentPath('dashboard');
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    setCurrentPath('dashboard');
+  const handleLogout = async () => {
+    try {
+        await api.post('/auth/logout', {});
+    } catch (e) {
+        console.warn('Logout API failed, clearing local state anyway', e);
+    } finally {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        setUser(null);
+        setCurrentPath('dashboard');
+    }
   };
 
   const renderContent = () => {
@@ -67,6 +96,14 @@ const App: React.FC = () => {
         return <Dashboard />;
     }
   };
+
+  if (loading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+          </div>
+      );
+  }
 
   if (!user) {
     return <Login onLogin={handleLogin} />;

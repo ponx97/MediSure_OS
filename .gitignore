@@ -22,10 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.env
-api/.env.api
-api/.env.api
-
-# local secrets
-api/.env.api
-.env

@@ -19,7 +19,7 @@ const bootstrapAdmin = async () => {
     }
 
     const existingAdmin = await prisma.user.findFirst({
-      where: { role: 'admin' },
+      where: { role: 'ADMIN' },
     });
 
     if (!existingAdmin) {
@@ -29,7 +29,7 @@ const bootstrapAdmin = async () => {
         data: {
           email: adminEmail,
           passwordHash,
-          role: 'admin',
+          role: 'ADMIN',
         },
       });
       logger.info(`Admin user created: ${adminEmail}`);

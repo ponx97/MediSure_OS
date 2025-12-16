@@ -9,10 +9,10 @@ const router = Router();
 
 router.use(protect);
 
-router.get('/', restrictTo('admin', 'staff'), memberController.getMembers);
-router.post('/', restrictTo('admin', 'staff'), validateRequest(createMemberSchema), memberController.createMember);
-router.get('/:id', restrictTo('admin', 'staff', 'provider', 'member'), memberController.getMember);
-router.put('/:id', restrictTo('admin', 'staff'), memberController.updateMember);
-router.delete('/:id', restrictTo('admin'), memberController.deleteMember);
+router.get('/', restrictTo('ADMIN', 'STAFF'), memberController.getMembers);
+router.post('/', restrictTo('ADMIN', 'STAFF'), validateRequest(createMemberSchema), memberController.createMember);
+router.get('/:id', restrictTo('ADMIN', 'STAFF', 'PROVIDER', 'MEMBER'), memberController.getMember);
+router.put('/:id', restrictTo('ADMIN', 'STAFF'), memberController.updateMember);
+router.delete('/:id', restrictTo('ADMIN'), memberController.deleteMember);
 
 export default router;
