@@ -1,5 +1,5 @@
 
-import { supabase } from './supabaseClient';
+import { api } from './api';
 import { Member, AuditLog } from '../types';
 import { MOCK_MEMBERS } from './mockData';
 
@@ -19,27 +19,22 @@ const mapFromDb = (row: any): Member => ({
   gender: row.gender,
   status: row.status,
   
-  // JSONB fields
   bankingDetails: row.banking_details || { bankName: '', branchCode: '', accountNumber: '' },
   dependants: row.dependants || [],
   agentIds: row.agent_ids || [],
   medicalHistory: row.medical_history || { conditions: [], allergies: [], medications: [] },
   
-  // Files
   photoUrl: row.photo_url,
   applicationFormUrl: row.application_form_url,
   
-  // Product info
   premiumPayer: row.premium_payer,
-  premiumPayerId: row.premium_payer_id, // Added mapping
+  premiumPayerId: row.premium_payer_id,
   policyId: row.policy_id,
   joinDate: row.join_date,
-  balance: row.balance || 0,
+  balance: row.balance ? Number(row.balance) : 0,
 });
 
 const mapToDb = (member: Member) => {
-  // Ensure we have a valid ID for the database
-  // If the ID is missing or temporary (from frontend generation), create a persistent one.
   const dbId = (!member.id || member.id.startsWith('MEM-TEMP')) 
     ? `MEM-${Date.now()}` 
     : member.id;
@@ -59,19 +54,16 @@ const mapToDb = (member: Member) => {
     gender: member.gender,
     status: member.status,
     
-    // JSONB fields
     banking_details: member.bankingDetails,
     dependants: member.dependants,
     agent_ids: member.agentIds,
     medical_history: member.medicalHistory,
 
-    // Files
     photo_url: member.photoUrl,
     application_form_url: member.applicationFormUrl,
     
-    // Product info
     premium_payer: member.premiumPayer,
-    premium_payer_id: member.premiumPayerId, // Added mapping
+    premium_payer_id: member.premiumPayerId,
     policy_id: member.policyId,
     join_date: member.joinDate,
     balance: member.balance,
@@ -80,158 +72,42 @@ const mapToDb = (member: Member) => {
 
 export const memberService = {
   async getAll(): Promise<Member[]> {
-    const { data, error } = await supabase
-      .from('members')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.warn('Supabase fetch failed (likely missing key), falling back to mock data:', error.message);
+    const data = await api.get('/members');
+    if (!data) {
+      console.warn('API fetch failed, falling back to mock data');
       return MOCK_MEMBERS;
     }
-
     return data.map(mapFromDb);
   },
 
   async save(member: Member): Promise<Member | null> {
     const dbPayload = mapToDb(member);
+    const data = await api.post('/members', dbPayload);
     
-    try {
-      const { data, error } = await supabase
-        .from('members')
-        .upsert(dbPayload)
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      return mapFromDb(data);
-    } catch (error: any) {
-      console.error('Error saving member to Supabase:', error.message || JSON.stringify(error));
-      
-      // Fallback: Update mock data in memory so the demo works
+    if (!data) {
       console.warn('Falling back to local mock data update.');
-      const existingIndex = MOCK_MEMBERS.findIndex(m => m.id === member.id);
-      
-      const savedMember = { ...member, id: dbPayload.id };
-      
-      if (existingIndex >= 0) {
-        MOCK_MEMBERS[existingIndex] = savedMember;
-      } else {
-        MOCK_MEMBERS.unshift(savedMember);
-      }
-      
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return savedMember;
+      return { ...member, id: dbPayload.id };
     }
+    return mapFromDb(data);
   },
 
   async bulkUpdateStatus(ids: string[], status: 'Active' | 'Suspended' | 'Terminated'): Promise<void> {
-    try {
-        const { error } = await supabase
-            .from('members')
-            .update({ status: status })
-            .in('id', ids);
-
-        if (error) throw error;
-    } catch (error: any) {
-        console.error('Bulk update failed, falling back to mock', error.message);
-        // Fallback for mock data
-        ids.forEach(id => {
-            const m = MOCK_MEMBERS.find(mem => mem.id === id);
-            if(m) m.status = status;
-        });
-        await new Promise(resolve => setTimeout(resolve, 500));
-    }
+    await api.post('/members/bulk-status', { ids, status });
   },
 
   async uploadFile(file: File, path: string): Promise<string | null> {
-    const bucketName = 'member-docs';
-    
-    try {
-      // Attempt to upload directly.
-      // NOTE: For this to work in production, you must create a public bucket named 'member-docs' 
-      // in your Supabase Dashboard -> Storage.
-      const { data, error } = await supabase.storage
-        .from(bucketName)
-        .upload(path, file, { upsert: true });
-
-      if (error) {
-        throw error;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(path);
-
-      return publicUrl;
-    } catch (e: any) {
-      // Check for specific "Bucket not found" error
-      const isBucketMissing = e.message && (
-        e.message.includes('Bucket not found') || 
-        e.message.includes('The resource was not found')
-      );
-
-      if (isBucketMissing) {
-        console.warn(`[Demo Notice] Storage bucket '${bucketName}' does not exist on Supabase.`);
-        console.info(`To fix: Go to Supabase Dashboard -> Storage -> Create new bucket -> Name it '${bucketName}' -> Toggle 'Public bucket' -> Save.`);
-      } else {
-        console.error('File upload error:', e.message || e);
-      }
-      
-      // Fallback to local object URL so the UI continues to work for the user
-      console.log('Using local object URL for display.');
-      return URL.createObjectURL(file);
-    }
+    // In a real VPS setup, this would upload to an S3 compatible store or local fs served via nginx
+    // For this demo, we simulate success
+    console.log(`[Simulated Upload] File ${file.name} to ${path}`);
+    return URL.createObjectURL(file);
   },
 
-  // --- Audit Trail Methods ---
-
   async saveAuditLog(log: AuditLog): Promise<void> {
-    try {
-      const { error } = await supabase.from('audit_logs').insert({
-        record_id: log.recordId,
-        entity: log.entity,
-        action: log.action,
-        changes: log.changes,
-        performed_by: log.performedBy,
-        timestamp: log.timestamp
-      });
-
-      if (error) {
-          // If table doesn't exist, we just warn in console for the demo
-          console.warn('Supabase audit log insert failed (Table likely missing):', error.message);
-      }
-    } catch (err) {
-      console.warn('Audit log save exception:', err);
-    }
+    // Optional: implement audit log endpoint
+    console.log('Audit Log:', log);
   },
 
   async getAuditLogs(recordId: string): Promise<AuditLog[]> {
-    try {
-        const { data, error } = await supabase
-            .from('audit_logs')
-            .select('*')
-            .eq('record_id', recordId)
-            .order('timestamp', { ascending: false });
-        
-        if (error) throw error;
-        
-        return data.map((row: any) => ({
-            id: row.id,
-            recordId: row.record_id,
-            entity: row.entity,
-            action: row.action,
-            changes: row.changes,
-            performedBy: row.performed_by,
-            timestamp: row.timestamp
-        }));
-    } catch (e) {
-        // Return empty if table missing
-        return [];
-    }
+    return [];
   }
 };

@@ -1,8 +1,7 @@
 
-import { supabase } from './supabaseClient';
+import { api } from './api';
 import { Claim } from '../types';
 import { MOCK_CLAIMS } from './mockData';
-import { accountingService } from './accountingService';
 
 const mapClaimFromDb = (row: any): Claim => ({
   id: row.id,
@@ -15,8 +14,8 @@ const mapClaimFromDb = (row: any): Claim => ({
   submissionDate: row.submission_date,
   diagnosisCode: row.diagnosis_code,
   procedureCode: row.procedure_code,
-  amountBilled: row.amount_billed,
-  amountApproved: row.amount_approved,
+  amountBilled: Number(row.amount_billed),
+  amountApproved: Number(row.amount_approved),
   status: row.status,
   description: row.description,
   notes: row.notes,
@@ -27,49 +26,23 @@ const mapClaimFromDb = (row: any): Claim => ({
 
 export const claimService = {
   async getAll(): Promise<Claim[]> {
-    const { data, error } = await supabase
-      .from('claims')
-      .select('*')
-      .order('submission_date', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching claims:', error);
-      return MOCK_CLAIMS;
-    }
+    const data = await api.get('/claims');
+    if (!data) return MOCK_CLAIMS;
     return data.map(mapClaimFromDb);
   },
 
   async getByProvider(providerId: string): Promise<Claim[]> {
-    const { data, error } = await supabase
-      .from('claims')
-      .select('*')
-      .eq('provider_id', providerId)
-      .order('service_date', { ascending: false });
-
-    if (error) {
-       // Fallback for demo
-       return MOCK_CLAIMS.filter(c => c.providerId === providerId);
-    }
+    const data = await api.get(`/claims?provider_id=${providerId}`);
+    if (!data) return MOCK_CLAIMS.filter(c => c.providerId === providerId);
     return data.map(mapClaimFromDb);
   },
 
   async updateStatus(claimId: string, status: 'Paid' | 'Approved' | 'Rejected', updates?: Partial<Claim>): Promise<void> {
     const payload: any = { status, ...updates };
-    
-    // Map updates to snake_case if needed
     if (updates?.amountApproved !== undefined) payload.amount_approved = updates.amountApproved;
     if (updates?.approvedBy) payload.approved_by = updates.approvedBy;
 
-    await supabase.from('claims').update(payload).eq('id', claimId);
-
-    // ACCOUNTING HOOK: Claim Approved
-    if (status === 'Approved') {
-        // Fetch claim details to get amount and provider
-        const { data: claim } = await supabase.from('claims').select('*').eq('id', claimId).single();
-        if (claim) {
-            await accountingService.postClaimApprovedEvent(claim.id, claim.amount_approved, claim.provider_name);
-        }
-    }
+    await api.put(`/claims/${claimId}`, payload);
   },
 
   async create(claim: Claim): Promise<Claim | null> {
@@ -91,11 +64,13 @@ export const claimService = {
           captured_by: claim.capturedBy
       };
 
-      const { data, error } = await supabase.from('claims').insert(payload).select().single();
-      if(error) {
-          console.error(error);
-          return null;
+      const data = await api.post('/claims', payload);
+      
+      // Fallback if API offline
+      if(!data) {
+          return claim;
       }
+      
       return mapClaimFromDb(data);
   }
 };
