@@ -45,15 +45,15 @@ app.post('/api/members', async (req, res) => {
   const query = `
     INSERT INTO members (
       id, first_name, middle_name, last_name, email, id_number, dob, marital_status, 
-      address, phone_number, gender, status, banking_details, dependants, agent_ids, 
+      employee_number, address, phone_number, gender, status, banking_details, dependants, agent_ids, 
       medical_history, photo_url, application_form_url, premium_payer, premium_payer_id, 
       policy_id, join_date, policy_end_date, balance
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
     RETURNING *;
   `;
   const values = [
     m.id, m.first_name, m.middle_name, m.last_name, m.email, m.id_number, m.dob, m.marital_status,
-    m.address, m.phone_number, m.gender, m.status, m.banking_details, JSON.stringify(m.dependants), m.agent_ids,
+    m.employee_number, m.address, m.phone_number, m.gender, m.status, m.banking_details, JSON.stringify(m.dependants), m.agent_ids,
     JSON.stringify(m.medical_history), m.photo_url, m.application_form_url, m.premium_payer, m.premium_payer_id,
     m.policy_id, m.join_date, m.policy_end_date, m.balance
   ];
@@ -131,7 +131,7 @@ app.post('/api/providers', async (req, res) => {
             tax_clearance_url, address, primary_contact_person, primary_contact_phone, email, 
             banking_details, location, accreditation_level, joined_date
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-        ON CONFLICT(id) DO UPDATE SET
+        ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name, status = EXCLUDED.status, email = EXCLUDED.email
         RETURNING *;
     `;
@@ -245,8 +245,71 @@ app.get('/api/agents', async (req, res) => {
     res.json(result.rows);
 });
 
+app.post('/api/agents', async (req, res) => {
+    const a = req.body;
+    const query = `INSERT INTO agents (id, name, type, nrc_id, email, phone, address, status, date_onboarded, commission_balance, bank_details) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`;
+    try {
+        const result = await pool.query(query, [a.id, a.name, a.type, a.nrcId, a.email, a.phone, a.address, a.status, a.dateOnboarded, a.commissionBalance, a.bankDetails]);
+        res.json(result.rows[0]);
+    } catch(err:any) { res.status(500).json({error: err.message}); }
+});
+
 app.get('/api/commissions', async (req, res) => {
     const result = await pool.query('SELECT * FROM commissions ORDER BY calculation_date DESC');
+    res.json(result.rows);
+});
+
+// --- Settings & Metadata Routes ---
+
+app.get('/api/medical-codes', async (req, res) => {
+    const result = await pool.query('SELECT * FROM medical_codes');
+    res.json(result.rows);
+});
+
+app.post('/api/medical-codes', async (req, res) => {
+    const c = req.body;
+    const query = `INSERT INTO medical_codes (id, code, description, type, price, effective_date, status, category, discipline_id, benefit_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`;
+    try {
+        const result = await pool.query(query, [c.id, c.code, c.description, c.type, c.price, c.effectiveDate, c.status, c.category, c.disciplineId, c.benefitId]);
+        res.json(result.rows[0]);
+    } catch(err:any) { res.status(500).json({error: err.message}); }
+});
+
+app.get('/api/disciplines', async (req, res) => {
+    const result = await pool.query('SELECT * FROM provider_disciplines');
+    res.json(result.rows);
+});
+
+app.post('/api/disciplines', async (req, res) => {
+    const d = req.body;
+    const query = `INSERT INTO provider_disciplines (id, code, name, description, status) VALUES ($1, $2, $3, $4, $5) RETURNING *`;
+    try {
+        const result = await pool.query(query, [d.id, d.code, d.name, d.description, d.status]);
+        res.json(result.rows[0]);
+    } catch(err:any) { res.status(500).json({error: err.message}); }
+});
+
+// --- Accounting Routes ---
+
+app.get('/api/accounts', async (req, res) => {
+    const result = await pool.query('SELECT * FROM accounts ORDER BY code');
+    res.json(result.rows);
+});
+
+app.get('/api/journals', async (req, res) => {
+    const result = await pool.query('SELECT * FROM journal_entries ORDER BY transaction_date DESC LIMIT 50');
+    res.json(result.rows);
+});
+
+// --- Automation & Billing Operations ---
+
+app.get('/api/billing-runs', async (req, res) => {
+    const result = await pool.query('SELECT * FROM billing_runs ORDER BY created_at DESC');
+    res.json(result.rows);
+});
+
+app.get('/api/automation-runs', async (req, res) => {
+    const result = await pool.query('SELECT * FROM automation_runs ORDER BY executed_at DESC');
     res.json(result.rows);
 });
 
