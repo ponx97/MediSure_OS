@@ -1,25 +1,20 @@
-version: '3.8'
-
 services:
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
     container_name: medisure_api
+    env_file:
+      - ./api/.env.api
     ports:
       - "4010:4010"
     environment:
       - PORT=4010
-      - DATABASE_URL=${DATABASE_URL:-postgresql://medisure_user:secure_password@mediapp_db:5432/medisure_db}
-      - JWT_SECRET=${JWT_SECRET:-change_me_in_prod}
-      - JWT_ACCESS_EXPIRATION=${JWT_ACCESS_EXPIRATION:-15m}
-      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-7d}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@medisure.co.zw}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
     networks:
       - mediapp_mediapp_net
-    restart: always
+    restart: unless-stopped
 
 networks:
   mediapp_mediapp_net:
     external: true
+    name: mediapp_mediapp_net

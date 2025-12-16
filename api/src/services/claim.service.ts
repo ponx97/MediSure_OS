@@ -1,6 +1,5 @@
 import prisma from '../utils/prisma';
 import { AppError } from '../utils/AppError';
-import { ClaimStatus } from '@prisma/client';
 
 const logAudit = async (userId: string, action: string, entityId: string, metadata: any) => {
   await prisma.auditLog.create({
@@ -22,7 +21,7 @@ export const create = async (data: any, userId: string) => {
     const newClaim = await tx.claim.create({
       data: {
         ...claimData,
-        status: ClaimStatus.SUBMITTED,
+        status: "submitted",
       },
     });
 
@@ -42,50 +41,50 @@ export const create = async (data: any, userId: string) => {
   return claim;
 };
 
-export const findAll = async () => prisma.claim.findMany({ include: { member: true, provider: true, claimItems: true } });
-export const findById = async (id: string) => prisma.claim.findUnique({ where: { id }, include: { member: true, provider: true, claimItems: true, payments: true } });
+export const findAll = async () => prisma.claim.findMany({ include: { member: true, provider: true, items: true } });
+export const findById = async (id: string) => prisma.claim.findUnique({ where: { id }, include: { member: true, provider: true, items: true, payments: true } });
 
 // Workflow actions
 export const submit = async (id: string, userId: string) => {
   const claim = await prisma.claim.update({
     where: { id },
-    data: { status: ClaimStatus.SUBMITTED },
+    data: { status: "submitted" },
   });
-  await logAudit(userId, 'SUBMIT_CLAIM', id, { status: ClaimStatus.SUBMITTED });
+  await logAudit(userId, 'SUBMIT_CLAIM', id, { status: "submitted" });
   return claim;
 };
 
 export const review = async (id: string, notes: string, userId: string) => {
   const claim = await prisma.claim.update({
     where: { id },
-    data: { status: ClaimStatus.REVIEW, notes },
+    data: { status: "review", notes },
   });
-  await logAudit(userId, 'REVIEW_CLAIM', id, { status: ClaimStatus.REVIEW, notes });
+  await logAudit(userId, 'REVIEW_CLAIM', id, { status: "review", notes });
   return claim;
 };
 
 export const approve = async (id: string, amountApproved: number, notes: string, userId: string) => {
   const claim = await prisma.claim.update({
     where: { id },
-    data: { status: ClaimStatus.APPROVED, amountApproved, notes },
+    data: { status: "approved", amountApproved, notes },
   });
-  await logAudit(userId, 'APPROVE_CLAIM', id, { status: ClaimStatus.APPROVED, amountApproved });
+  await logAudit(userId, 'APPROVE_CLAIM', id, { status: "approved", amountApproved });
   return claim;
 };
 
 export const reject = async (id: string, notes: string, userId: string) => {
   const claim = await prisma.claim.update({
     where: { id },
-    data: { status: ClaimStatus.REJECTED, notes },
+    data: { status: "rejected", notes },
   });
-  await logAudit(userId, 'REJECT_CLAIM', id, { status: ClaimStatus.REJECTED, notes });
+  await logAudit(userId, 'REJECT_CLAIM', id, { status: "rejected", notes });
   return claim;
 };
 
 export const pay = async (id: string, paidAmount: number, reference: string, userId: string) => {
   const claim = await prisma.claim.findUnique({ where: { id } });
   if (!claim) throw new AppError('Claim not found', 404);
-  if (claim.status !== ClaimStatus.APPROVED && claim.status !== ClaimStatus.PAID) {
+  if (claim.status !== "approved" && claim.status !== "paid") {
     throw new AppError('Claim must be approved before payment', 400);
   }
 
@@ -94,13 +93,14 @@ export const pay = async (id: string, paidAmount: number, reference: string, use
       data: {
         claimId: id,
         paidAmount,
+        paidAt: new Date(),
         reference,
       },
     });
 
     const updatedClaim = await tx.claim.update({
       where: { id },
-      data: { status: ClaimStatus.PAID },
+      data: { status: "paid" },
     });
     
     return { payment, updatedClaim };

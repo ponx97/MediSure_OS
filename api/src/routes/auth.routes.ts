@@ -15,7 +15,7 @@ router.post('/logout', protect, authController.logout);
 router.post(
   '/register',
   protect,
-  restrictTo('ADMIN'),
+  restrictTo('admin'),
   validateRequest(registerSchema),
   authController.register
 );

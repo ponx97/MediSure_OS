@@ -5,20 +5,20 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 import routes from './routes';
 import { errorHandler } from './middleware/error.middleware';
 import { AppError } from './utils/AppError';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
 
 // Security & Middleware
 app.use(helmet());
+
+// Health Check Endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
 
 // CORS Configuration
 const allowedOrigins = ['https://medisureos.ithinksys.co.zw', 'http://localhost:5173'];
@@ -53,7 +53,7 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // Swagger
-const swaggerDocument = YAML.load(path.join(__dirname, '../swagger.yaml'));
+const swaggerDocument = YAML.load(process.cwd() + '/swagger.yaml');
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Routes
