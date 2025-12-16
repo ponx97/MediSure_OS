@@ -1,0 +1,5 @@
+{
+  "name": "MediSure OS",
+  "description": "A comprehensive Health Insurance Management System featuring RBAC, Claims Processing with AI insights, Membership Management, and Policy Administration.",
+  "requestFramePermissions": []
+}
