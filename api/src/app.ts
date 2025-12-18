@@ -6,14 +6,12 @@ import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
 import routes from './routes';
 import { errorHandler } from './middleware/error.middleware';
 import { AppError } from './utils/AppError';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// fix for import.meta.url
 
 const app = express();
 
@@ -53,10 +51,11 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // Swagger
-const swaggerDocument = YAML.load(path.join(__dirname, '../swagger.yaml'));
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+const swaggerDocument = YAML.load(path.join(__dirname, '..', 'swagger.yaml'));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Routes
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.use('/api', routes);
 
 // 404 Handler

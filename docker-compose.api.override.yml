@@ -6,7 +6,6 @@ services:
       context: ./api
       dockerfile: Dockerfile
     container_name: medisure_api
-    command: ["npm", "run", "start"]
     ports:
       - "4010:4010"
     environment:

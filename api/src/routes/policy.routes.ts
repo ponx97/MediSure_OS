@@ -9,10 +9,10 @@ const router = Router();
 
 router.use(protect);
 
-router.get('/', restrictTo('ADMIN', 'STAFF'), policyController.getPolicies);
-router.post('/', restrictTo('ADMIN', 'STAFF'), validateRequest(createPolicySchema), policyController.createPolicy);
-router.get('/:id', restrictTo('ADMIN', 'STAFF', 'MEMBER'), policyController.getPolicy);
-router.put('/:id', restrictTo('ADMIN', 'STAFF'), policyController.updatePolicy);
-router.delete('/:id', restrictTo('ADMIN'), policyController.deletePolicy);
+router.get('/', restrictTo('admin', 'STAFF'), policyController.getPolicies);
+router.post('/', restrictTo('admin', 'STAFF'), validateRequest(createPolicySchema), policyController.createPolicy);
+router.get('/:id', restrictTo('admin', 'STAFF', 'MEMBER'), policyController.getPolicy);
+router.put('/:id', restrictTo('admin', 'STAFF'), policyController.updatePolicy);
+router.delete('/:id', restrictTo('admin'), policyController.deletePolicy);
 
 export default router;

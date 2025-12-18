@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    container_name: medisureos_app
+    ports:
+      - "5007:80"
+    restart: unless-stopped
+    networks:
+      - mediapp_mediapp_net
+
+networks:
+  mediapp_mediapp_net:
+    external: true
+    name: mediapp_mediapp_net
