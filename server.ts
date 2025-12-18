@@ -314,13 +314,14 @@ app.get('/api/automation-runs', async (req, res) => {
 });
 
 // --- Static Frontend Serving ---
-// Serve static files from the 'dist/client' directory (Vite build output)
-app.use(express.static(path.join(__dirname, '../client')));
+const clientPath = path.join(__dirname, '../client');
+
+app.use(express.static(clientPath));
 
 // Handle client-side routing, return all requests to the app
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(__dirname, '../client/index.html'));
+    res.sendFile(path.join(clientPath, 'index.html'));
   }
 });
 
